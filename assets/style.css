@@ -1,3 +1,4 @@
+/* Estilos generales para mantener la página centrada y legible. */
 body {
     font-family: Arial, sans-serif;
     max-width: 850px;
@@ -6,17 +7,20 @@ body {
     line-height: 1.5;
 }
 
+/* Separar visualmente los títulos del contenido. */
 h1,
 h2 {
     margin-bottom: 15px;
 }
 
+/* Dar formato sencillo al texto que representa rutas de la API. */
 code {
     padding: 3px 6px;
     border-radius: 4px;
     background: #f2f2f2;
 }
 
+/* Mantener espacio entre los diferentes endpoints mostrados. */
 li {
     margin: 12px 0;
 }

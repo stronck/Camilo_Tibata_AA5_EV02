@@ -1,28 +1,31 @@
 <?php
+// Iniciar la sesión para guardar el usuario autenticado.
 session_start();
+// Devolver siempre las respuestas del servicio en formato JSON.
 header("Content-Type: application/json; charset=UTF-8");
 
-// Incluir el archivo de conexión a la base de datos.
+// Reutilizar la conexión centralizada con la base de datos.
 require_once __DIR__ . "/../includes/database.php";
 
-// Verificar si se ha enviado una solicitud POST para iniciar sesión.
+// El inicio de sesión solamente se permite mediante POST.
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     http_response_code(405);
     echo json_encode(["error" => "Método no permitido. Use POST."]);
     exit;
 }
 
-// Recuperar los datos enviados en formato JSON.
+// Leer y convertir los datos JSON enviados por el cliente.
 $json = file_get_contents("php://input");
 $data = json_decode($json, true);
 
+// Verificar que el cuerpo recibido tenga una estructura JSON válida.
 if (!is_array($data)) {
     http_response_code(400);
     echo json_encode(["error" => "El cuerpo debe contener un JSON válido."]);
     exit;
 }
 
-// Verificar si los datos están completos.
+// Validar que se hayan enviado usuario y contraseña.
 if (!isset($data["user"], $data["password"]) ||
     trim($data["user"]) === "" || $data["password"] === "") {
     http_response_code(400);
@@ -30,29 +33,30 @@ if (!isset($data["user"], $data["password"]) ||
     exit;
 }
 
+// Obtener los valores necesarios para comprobar las credenciales.
 $user = trim($data["user"]);
 $password = $data["password"];
 
-// Consultar la base de datos para verificar las credenciales.
+// Buscar el usuario mediante una consulta preparada.
 $sql = "SELECT * FROM users WHERE `user` = ?";
 $stmt = $db->prepare($sql);
 $stmt->bind_param("s", $user);
 $stmt->execute();
 $resultado = $stmt->get_result();
 
-// Verificar si se encontró un usuario con el nombre proporcionado.
+// Continuar solamente cuando existe un único usuario con ese nombre.
 if ($resultado->num_rows === 1) {
-    // Obtener el hash de la contraseña almacenado en la base de datos.
+    // Recuperar el registro y el hash de contraseña almacenado.
     $fila = $resultado->fetch_assoc();
     $hashAlmacenado = $fila["password"];
 
-    // Verificar si la contraseña ingresada coincide con el hash almacenado.
+    // Comparar la contraseña recibida con el hash almacenado.
     if (password_verify($password, $hashAlmacenado)) {
-        // Autenticación exitosa: establecer la sesión del usuario.
+        // Regenerar el identificador de sesión después de autenticar al usuario.
         session_regenerate_id(true);
         $_SESSION["user"] = $user;
 
-        // Responder con un mensaje de éxito en formato JSON.
+        // Informar al cliente que la autenticación fue correcta.
         echo json_encode(["success" => "Inicio de sesión exitoso"]);
         $stmt->close();
         $db->close();
@@ -60,10 +64,11 @@ if ($resultado->num_rows === 1) {
     }
 }
 
-// Credenciales incorrectas: responder con un mensaje de error en formato JSON.
+// Si las credenciales no coinciden, devolver un error de autenticación.
 http_response_code(401);
 echo json_encode(["error" => "Credenciales incorrectas"]);
 
+// Liberar los recursos utilizados por la consulta y la conexión.
 $stmt->close();
 $db->close();
 exit;
